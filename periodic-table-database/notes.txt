@@ -1,0 +1,64 @@
+#################################
+# Periodic Table Database Notes #
+#################################
+# fix database
+alter table properties rename column weight to atomic_mass;
+alter table properties rename column melting_point to melting_point_celsius;
+alter table properties rename column boiling_point to boiling_point_celsius;
+alter table properties alter column boiling_point_celsius set not null;
+alter table properties alter column melting_point_celsius set not null;
+alter table elements add unique(symbol);
+alter table elements add unique(name);
+alter table elements alter column symbol set not null;
+alter table elements alter column name set not null;
+alter table properties add foreign key(atomic_number) references elements(atomic_number);
+
+# create types table and insert the data
+create table types(type_id serial primary key, type varchar(9) not null);
+insert into types values('metal'), ('metalloid'), ('nonmetal');
+
+# add type_id column to properties
+alter table properties add column type_id int;
+alter table properties add foreign key(type_id) references types(type_id);
+
+# update properties with type_id's
+update properties set type_id=1 where type='metal';
+update properties set type_id=2 where type='metalloid';
+update properties set type_id=3 where type='nonmetal';
+
+# alter properties 
+alter table properties alter column type_id set not null;
+alter table properties drop column type;
+
+# delete element with atomic_number 1000
+delete from properties where atomic_number=1000;
+delete from elements where atomic_number=1000;
+
+# insert new elements
+insert into elements values(9, 'F', 'Fluorine'), (10, 'Ne', 'Neon');
+insert into properties 
+values(9, 18.998, -220, -188.1, 3), (10, 20.18, -248.6, -246.1, 3);
+
+# remove trailing zeroes
+alter table properties alter column atomic_mass type decimal;
+update properties set atomic_mass=atomic_mass::real;
+
+# capitalize first letter of element name and symbol
+#update elements set name=CONCAT(UPPER(LEFT(name, 1)), substring(name, 2, length(name)));
+#select CONCAT(UPPER(LEFT(symbol, 1)), substring(symbol, 2, length(symbol))) as sym from elements;
+update elements set symbol=CONCAT(UPPER(LEFT(symbol, 1)), substring(symbol, 2, length(symbol)));
+or
+update elements set symbol=initcap(symbol);
+
+# drop type column 
+alter table properties drop column type;
+
+# test select statements
+select * from elements where left(symbol, 1)=lower(left(symbol,1));
+select upper(left(symbol, 1)) as s from elements where left(symbol, 1)=lower(left(symbol,1));
+
+# select CONCAT(UPPER(LEFT(name, 1)), substring(name, 2, length(name))) as element from elements;
+
+select * from properties left join types using(type_id);
+select * from elements left join properties using(atomic_number) left join types using(type_id); 
+select atomic_number as an, symbol, name, atomic_mass as mass, melting_point_celsius as mp, boiling_point_celsius as bp, type from elements left join properties using(atomic_number) left join types using(type_id); 
